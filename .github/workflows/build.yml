@@ -43,9 +43,11 @@ jobs:
             ./build-release.sh --codesign-identity -
             ./install-from-sources.sh --dont-rebuild
           fi
+      - name: 'Tar files'
+        run: tar -cvf apps.tar /Applications /opt/homebrew/Caskroom/aerospace-dev/latest/AeroSpace-v0.0.0-SNAPSHOT/bin
       - name: Upload Build Artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          path: /Applications/AeroSpace.app  # Change this to the actual path of your build output file
+          path: apps.tar  # Change this to the actual path of your build output file
