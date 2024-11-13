@@ -19,7 +19,7 @@ jobs:
         # https://github.com/actions/runner-images/blob/main/images/macos/macos-13-Readme.md
         # https://github.com/actions/runner-images/blob/main/images/macos/macos-14-arm64-Readme.md
         # https://github.com/actions/runner-images/blob/main/images/macos/macos-15-arm64-Readme.md
-        os: [macos-13, macos-14, macos-15]
+        os: [macos-15]
     name: Build
     runs-on: ${{ matrix.os }}
 
@@ -43,3 +43,9 @@ jobs:
             ./build-release.sh --codesign-identity -
             ./install-from-sources.sh --dont-rebuild
           fi
+      - name: Upload Build Artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: /Applications/AeroSpace.app  # Change this to the actual path of your build output file
