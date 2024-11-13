@@ -44,7 +44,7 @@ jobs:
             ./install-from-sources.sh --dont-rebuild
           fi
       - name: 'Tar files'
-        run: tar -cvf apps.tar /Applications /opt/homebrew/Caskroom/aerospace-dev/latest/AeroSpace-v0.0.0-SNAPSHOT/bin
+        run: tar -cvf apps.tar /Applications/AeroSpace.app /opt/homebrew/Caskroom/aerospace-dev/latest/AeroSpace-v0.0.0-SNAPSHOT/bin
       - name: Upload Build Artifacts
         if: always()
         uses: actions/upload-artifact@v4
