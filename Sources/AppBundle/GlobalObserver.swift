@@ -2,15 +2,16 @@ import AppKit
 
 class GlobalObserver {
     private static func onNotif(_ notification: Notification) {
-        // Second line of defence against lock screen window. See: gcWindows
+        // Third line of defence against lock screen window. See: closedWindowsCache
+        // Second and third lines of defence are technically needed only to avoid potential flickering
         if (notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.bundleIdentifier == lockScreenAppBundleId {
             return
         }
-        refreshAndLayout()
+        refreshAndLayout(screenIsDefinitelyUnlocked: false)
     }
 
     private static func onHideApp(_ notification: Notification) {
-        refreshSession(body: {
+        refreshSession(screenIsDefinitelyUnlocked: false) {
             if TrayMenuModel.shared.isEnabled && config.automaticallyUnhideMacosHiddenApps {
                 if let w = prevFocus?.windowOrNil,
                    w.macAppUnsafe.nsApp.isHidden,
@@ -26,7 +27,7 @@ class GlobalObserver {
                     app.nsApp.unhide()
                 }
             }
-        })
+        }
     }
 
     static func initObserver() {
@@ -39,7 +40,8 @@ class GlobalObserver {
         nc.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main, using: onNotif)
         nc.addObserver(forName: NSWorkspace.didTerminateApplicationNotification, object: nil, queue: .main, using: onNotif)
 
-        NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseUp]) { _ in
+        NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseUp]) { _ in // todo reduce number of refreshSession
+            resetClosedWindowsCache()
             resetManipulatedWithMouseIfPossible()
             let mouseLocation = mouseLocation
             let clickedMonitor = mouseLocation.monitorApproximation
@@ -47,12 +49,12 @@ class GlobalObserver {
             switch () {
                 // Detect clicks on desktop of different monitors
                 case _ where clickedMonitor.activeWorkspace != focus.workspace:
-                    _ = refreshSession {
+                    _ = refreshSession(screenIsDefinitelyUnlocked: true) {
                         clickedMonitor.activeWorkspace.focusWorkspace()
                     }
                 // Detect close button clicks for unfocused windows
                 case _ where  focus.windowOrNil?.getRect()?.contains(mouseLocation) == false: // todo replace getRect with preflushRect when it later becomes available
-                    refreshAndLayout()
+                    refreshAndLayout(screenIsDefinitelyUnlocked: true)
                 default:
                     break
             }

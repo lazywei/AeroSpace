@@ -4,8 +4,9 @@ import Common
 /// It's one of the most important function of the whole application.
 /// The function is called as a feedback response on every user input.
 /// The function is idempotent.
-func refreshSession<T>(startup: Bool = false, forceFocus: Bool = false, body: () -> T) -> T {
+func refreshSession<T>(screenIsDefinitelyUnlocked: Bool, startup: Bool = false, forceFocus: Bool = false, body: () -> T) -> T {
     check(Thread.current.isMainThread)
+    if screenIsDefinitelyUnlocked { resetClosedWindowsCache() }
     gc()
     gcMonitors()
 
@@ -38,8 +39,8 @@ func refreshSession<T>(startup: Bool = false, forceFocus: Bool = false, body: ()
     return result
 }
 
-func refreshAndLayout(startup: Bool = false) {
-    refreshSession(startup: startup, body: {})
+func refreshAndLayout(screenIsDefinitelyUnlocked: Bool, startup: Bool = false) {
+    refreshSession(screenIsDefinitelyUnlocked: screenIsDefinitelyUnlocked, startup: startup, body: {})
 }
 
 func refreshModel() {
@@ -57,22 +58,20 @@ private func gc() {
 }
 
 func gcWindows() {
-    // When lockscreen is active, all accessibility API becomes unobservable (all attributes become empty, window id
-    // becomes nil, etc.) which tricks AeroSpace into thinking that all windows were closed.
-    // The worst part is that windows don't becomes unobservable all together but window by window.
+    // Second line of defence against lock screen. See the first line of defence: closedWindowsCache
+    // Second and third lines of defence are technically needed only to avoid potential flickering
     if NSWorkspace.shared.frontmostApplication?.bundleIdentifier == lockScreenAppBundleId { return }
-    let allWindows = MacWindow.allWindows
-    let toKill: [MacWindow] = allWindows.filter { $0.axWindow.containingWindowId() == nil }
+    let toKill = MacWindow.allWindowsMap.filter { $0.value.axWindow.containingWindowId() == nil }
     // If all windows are "unobservable", it's highly propable that loginwindow might be still active and we are still
     // recovering from unlock
-    if toKill.count == allWindows.count { return }
+    if toKill.count == MacWindow.allWindowsMap.count { return }
     for window in toKill {
-        window.garbageCollect()
+        window.value.garbageCollect(skipClosedWindowsCache: false)
     }
 }
 
 func refreshObs(_ obs: AXObserver, ax: AXUIElement, notif: CFString, data: UnsafeMutableRawPointer?) {
-    refreshAndLayout()
+    refreshAndLayout(screenIsDefinitelyUnlocked: false)
 }
 
 enum OptimalHideCorner {

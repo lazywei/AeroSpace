@@ -12,23 +12,19 @@ public func menuBar(viewModel: TrayMenuModel) -> some Scene {
         Divider()
         if viewModel.isEnabled {
             Text("Workspaces:")
-            ForEach(Workspace.all) { (workspace: Workspace) in
+            ForEach(viewModel.workspaces, id: \.name) { workspace in
                 Button {
-                    refreshSession { _ = workspace.focusWorkspace() }
+                    refreshSession(screenIsDefinitelyUnlocked: true) { _ = Workspace.get(byName: workspace.name).focusWorkspace() }
                 } label: {
-                    Toggle(isOn: workspace == focus.workspace
-                        ? Binding(get: { true }, set: { _, _ in })
-                        : Binding(get: { false }, set: { _, _ in }))
-                    {
-                        let monitor = workspace.isVisible || !workspace.isEffectivelyEmpty ? " - \(workspace.workspaceMonitor.name)" : ""
-                        Text(workspace.name + monitor).font(.system(.body, design: .monospaced))
+                    Toggle(isOn: .constant(workspace.isFocused)) {
+                        Text(workspace.name + workspace.suffix).font(.system(.body, design: .monospaced))
                     }
                 }
             }
             Divider()
         }
         Button(viewModel.isEnabled ? "Disable" : "Enable") {
-            refreshSession {
+            refreshSession(screenIsDefinitelyUnlocked: true) {
                 _ = EnableCommand(args: EnableCmdArgs(rawArgs: [], targetState: .toggle)).run(.defaultEnv, .emptyStdin)
             }
         }.keyboardShortcut("E", modifiers: .command)
@@ -47,7 +43,7 @@ public func menuBar(viewModel: TrayMenuModel) -> some Scene {
         }.keyboardShortcut("O", modifiers: .command)
         if viewModel.isEnabled {
             Button("Reload config") {
-                refreshSession { _ = reloadConfig() }
+                refreshSession(screenIsDefinitelyUnlocked: true) { _ = reloadConfig() }
             }.keyboardShortcut("R", modifiers: .command)
         }
         Button("Quit \(aeroSpaceAppName)") {
