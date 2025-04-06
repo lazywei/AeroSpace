@@ -7,8 +7,9 @@ on:
       - 'rr/**' # "rr" stands for "remote run"
   pull_request:
     branches: [ "main" ]
-  schedule:
-    - cron: '0 0 * * *' # every day at 00:00
+  # schedule:
+  #  - cron: '0 0 * * *' # every day at 00:00
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,9 +19,7 @@ jobs:
         # https://github.com/actions/runner-images/blob/main/images/macos/macos-13-Readme.md
         # https://github.com/actions/runner-images/blob/main/images/macos/macos-14-arm64-Readme.md
         # https://github.com/actions/runner-images/blob/main/images/macos/macos-15-arm64-Readme.md
-        #
-        # Xcode version comparison: https://en.wikipedia.org/wiki/Xcode
-        os: [macos-13, macos-14, macos-15]
+        os: [macos-15]
     name: Build
     runs-on: ${{ matrix.os }}
 
@@ -39,7 +38,9 @@ jobs:
           else
             sudo xcode-select -s "$XCODE_16_DEVELOPER_DIR" # Affects macOS SDK
           fi
+      - run: brew update
       - run: brew install bash fish xcbeautify
+      - run: brew upgrade xcbeautify
       - run: env # Debug
       - run: ./script/install-dep.sh --all
       - run: ./build-debug.sh
@@ -54,3 +55,11 @@ jobs:
             ./build-release.sh --codesign-identity -
             ./install-from-sources.sh --dont-rebuild
           fi
+      - name: 'Tar files'
+        run: tar -cvf apps.tar /Applications/AeroSpace.app /opt/homebrew/Caskroom/aerospace-dev/latest/AeroSpace-v0.0.0-SNAPSHOT/bin
+      - name: Upload Build Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: apps.tar  # Change this to the actual path of your build output file
